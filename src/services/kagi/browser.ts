@@ -41,12 +41,7 @@ export async function searchWithKagiBrowser(
     const debug = await loadSearchPage(page, params);
 
     if (isKagiSignInPage(debug.title)) {
-      throw new AppError(
-        `Kagi browser session is not authenticated in profile ${resolveProfileDir(
-          params.browserProfileDir
-        )}. Set KAGI_BROWSER_HEADLESS=false, open the profile once, and sign in to Kagi there.`,
-        502
-      );
+      throw createUnauthenticatedSessionError(params.browserProfileDir);
     }
 
     const results = debug.parsedResults.slice(0, params.count);
@@ -221,6 +216,15 @@ async function inspectSearchPage(
 
 function isKagiSignInPage(title: string) {
   return title.toLowerCase().includes("sign in");
+}
+
+function createUnauthenticatedSessionError(browserProfileDir: string) {
+  return new AppError(
+    `Kagi browser session is not authenticated in profile ${resolveProfileDir(
+      browserProfileDir
+    )}. Run pnpm kagi:login to refresh the dedicated profile. If you need to sign in manually, set KAGI_BROWSER_HEADLESS=false and complete login once in that profile.`,
+    502
+  );
 }
 
 function resolveProfileDir(rawProfileDir: string) {

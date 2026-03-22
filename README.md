@@ -58,11 +58,15 @@ Recommended first bootstrap:
 ```bash
 pnpm kagi:login
 pnpm dev
+pnpm kagi:smoke
 ```
+
+If `/search/kagi` or `pnpm kagi:smoke` reports an authentication problem, run `pnpm kagi:login` again to refresh the dedicated Kagi browser profile.
 
 ## Example
 
 ```bash
 curl "http://127.0.0.1:4318/health"
 curl "http://127.0.0.1:4318/search/kagi?q=react%20server%20components&count=5"
+pnpm kagi:smoke
 ```
