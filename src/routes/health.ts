@@ -4,7 +4,7 @@ export async function registerHealthRoutes(server: FastifyInstance) {
   server.get("/health", async () => {
     return {
       ok: true,
-      service: "openclaw-extensions",
+      service: "assistant-services",
       timestamp: new Date().toISOString()
     };
   });
