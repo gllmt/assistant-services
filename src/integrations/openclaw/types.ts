@@ -8,8 +8,10 @@ export interface OpenClawWebSearchResult {
 export interface OpenClawWebSearchResponse {
   query: string;
   provider: string;
+  mode?: string;
   count: number;
   tookMs: number;
+  warning?: string;
   externalContent: {
     untrusted: true;
     source: "web_search";

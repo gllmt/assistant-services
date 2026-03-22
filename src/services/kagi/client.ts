@@ -1,8 +1,90 @@
-import { getJson } from "../../lib/http.js";
+import { AppError, UpstreamError } from "../../lib/errors.js";
+import { getJson, getText } from "../../lib/http.js";
+import { debugKagiBrowserSearch, searchWithKagiBrowser } from "./browser.js";
+import { inspectKagiHtml, parseKagiHtmlResults } from "./html.js";
 import { mapKagiSearchResponse } from "./mapper.js";
+import { redactKagiToken, resolveKagiSessionToken } from "./session.js";
 import type { KagiRawSearchResponse, KagiSearchParams, KagiSearchResult } from "./types.js";
 
 export async function searchWithKagi(params: KagiSearchParams): Promise<KagiSearchResult> {
+  if (params.mode === "api") {
+    if (!params.apiKey) {
+      throw new AppError("KAGI_API_KEY is required when KAGI_SEARCH_MODE=api", 500);
+    }
+
+    return searchWithKagiApi(params);
+  }
+
+  if (params.mode === "browser_session") {
+    return searchWithKagiBrowser(params);
+  }
+
+  if (params.mode === "session_html") {
+    return searchWithKagiHtml(params);
+  }
+
+  if (params.apiKey) {
+    try {
+      return await searchWithKagiApi(params);
+    } catch (error) {
+      if (shouldFallbackToBrowser(error)) {
+        return searchWithKagiBrowser({
+          ...params,
+          mode: "browser_session"
+        });
+      }
+
+      throw error;
+    }
+  }
+
+  return searchWithKagiBrowser({
+    ...params,
+    mode: "browser_session"
+  });
+}
+
+export async function debugKagiSearch(params: KagiSearchParams) {
+  if (params.mode === "session_html") {
+    return debugKagiHtmlSearch(params);
+  }
+
+  return debugKagiBrowserSearch(params);
+}
+
+export async function debugKagiHtmlSearch(params: KagiSearchParams) {
+  const sessionToken = resolveKagiSessionToken(params);
+
+  if (!sessionToken) {
+    throw new AppError(
+      "Kagi HTML fallback requires KAGI_SESSION_TOKEN or KAGI_SESSION_LINK",
+      500
+    );
+  }
+
+  const url = new URL(`${params.webBaseUrl.replace(/\/$/, "")}/search`);
+  url.searchParams.set("q", params.query);
+  url.searchParams.set("token", sessionToken);
+
+  const html = await getText(url, {
+    method: "GET",
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+    }
+  });
+  const inspection = inspectKagiHtml(html, params.webBaseUrl);
+
+  return {
+    finalUrl: redactKagiToken(url.toString()),
+    title: inspection.title,
+    sampleAnchors: inspection.sampleAnchors,
+    parsedResults: inspection.parsedResults
+  };
+}
+
+async function searchWithKagiApi(params: KagiSearchParams): Promise<KagiSearchResult> {
   const startedAt = Date.now();
   const url = new URL(`${params.baseUrl.replace(/\/$/, "")}/search`);
 
@@ -22,8 +104,67 @@ export async function searchWithKagi(params: KagiSearchParams): Promise<KagiSear
   return {
     query: params.query,
     provider: "kagi",
+    mode: "api",
     count: results.length,
     tookMs: Date.now() - startedAt,
     results
   };
+}
+
+async function searchWithKagiHtml(params: KagiSearchParams): Promise<KagiSearchResult> {
+  const startedAt = Date.now();
+  const sessionToken = resolveKagiSessionToken(params);
+
+  if (!sessionToken) {
+    throw new AppError(
+      "Kagi HTML fallback requires KAGI_SESSION_TOKEN or KAGI_SESSION_LINK",
+      500
+    );
+  }
+
+  const url = new URL(`${params.webBaseUrl.replace(/\/$/, "")}/search`);
+  url.searchParams.set("q", params.query);
+  url.searchParams.set("token", sessionToken);
+
+  const html = await getText(url, {
+    method: "GET",
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+    }
+  });
+
+  const results = parseKagiHtmlResults(html, params.webBaseUrl).slice(0, params.count);
+
+  if (results.length === 0) {
+    throw new UpstreamError(
+      "Kagi HTML fallback returned no parsable search results",
+      502,
+      {
+        upstreamBody: "No parsable Kagi HTML search results"
+      }
+    );
+  }
+
+  return {
+    query: params.query,
+    provider: "kagi",
+    mode: "session_html",
+    count: results.length,
+    tookMs: Date.now() - startedAt,
+    results,
+    warning: "Using Kagi session-based HTML fallback because Search API access is unavailable."
+  };
+}
+
+function shouldFallbackToBrowser(error: unknown) {
+  if (!(error instanceof UpstreamError)) {
+    return false;
+  }
+
+  const status = error.upstreamStatus;
+  const message = `${error.message}\n${error.upstreamBody ?? ""}`;
+
+  return status === 401 && /search api is currently in beta|request access/i.test(message);
 }

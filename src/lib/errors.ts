@@ -9,8 +9,20 @@ export class AppError extends Error {
 }
 
 export class UpstreamError extends AppError {
-  constructor(message: string, statusCode = 502, options?: ErrorOptions) {
+  readonly upstreamStatus?: number;
+  readonly upstreamBody?: string;
+
+  constructor(
+    message: string,
+    statusCode = 502,
+    options?: ErrorOptions & {
+      upstreamStatus?: number;
+      upstreamBody?: string;
+    }
+  ) {
     super(message, statusCode, options);
     this.name = "UpstreamError";
+    this.upstreamStatus = options?.upstreamStatus;
+    this.upstreamBody = options?.upstreamBody;
   }
 }

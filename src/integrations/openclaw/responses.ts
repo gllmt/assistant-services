@@ -7,8 +7,10 @@ export function createOpenClawWebSearchResponse(
   return {
     query: result.query,
     provider: result.provider,
+    mode: result.mode,
     count: result.count,
     tookMs: result.tookMs,
+    warning: result.warning,
     externalContent: {
       untrusted: true,
       source: "web_search",
