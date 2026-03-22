@@ -70,3 +70,12 @@ curl "http://127.0.0.1:4318/health"
 curl "http://127.0.0.1:4318/search/kagi?q=react%20server%20components&count=5"
 pnpm kagi:smoke
 ```
+
+## macOS service mode
+
+The standard persistent runtime on macOS is `launchd` with a user `LaunchAgent`.
+
+- Runbook: [docs/macos-launchd.md](docs/macos-launchd.md)
+- Versioned plist: [ops/launchd/com.gllmt.assistant-services.plist](ops/launchd/com.gllmt.assistant-services.plist)
+
+Use a `LaunchAgent`, not a `LaunchDaemon`, because the Kagi browser-session fallback depends on user-session resources and the dedicated Playwright profile.

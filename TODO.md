@@ -14,14 +14,14 @@ Roadmap for turning `assistant-services` into a reliable local backend for perso
 
 ## P0 - Stabilize Kagi and local runtime
 
-- [ ] Add unit tests for the Kagi parser in `src/services/kagi/html.ts`.
-- [ ] Add fallback tests for `api -> browser_session` in `src/services/kagi/client.ts`.
-- [ ] Add a Kagi smoke-test command that verifies `/search/kagi` returns usable results on the local machine.
-- [ ] Improve the expired-session UX for Kagi and suggest `pnpm kagi:login` automatically.
-- [ ] Add explicit timeouts and limited retries around upstream HTTP calls.
-- [ ] Decide and document how the service should run persistently on this machine. Preferred on macOS: `launchd`.
+- [x] Add unit tests for the Kagi parser in `src/services/kagi/html.ts`.
+- [x] Add fallback tests for `api -> browser_session` in `src/services/kagi/client.ts`.
+- [x] Add a Kagi smoke-test command that verifies `/search/kagi` returns usable results on the local machine.
+- [x] Improve the expired-session UX for Kagi and suggest `pnpm kagi:login` automatically.
+- [x] Add explicit timeouts and limited retries around upstream HTTP calls.
+- [x] Decide and document how the service should run persistently on this machine. Preferred on macOS: `launchd`.
 - [ ] Keep the service bound to `127.0.0.1` and add local auth before exposing Gmail or Notion.
-- [ ] Document the operational basics: start/stop flow, logs, browser profile location, and recovery steps.
+- [x] Document the operational basics: start/stop flow, logs, browser profile location, and recovery steps.
 
 ## P1 - Connect OpenClaw properly
 
